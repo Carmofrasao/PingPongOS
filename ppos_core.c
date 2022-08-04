@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "queue.h"
+#include <string.h>
 
 enum estados {
     TERMINADA = 0,
@@ -20,9 +21,43 @@ task_t ContextDispatcher;
 task_t *TarefasProntas;
 int userTasks;
 
+void task_setprio (task_t *task, int prio){
+    if (task == NULL){
+        tarefaAtual->prio_e = prio;
+        tarefaAtual->prio_d = tarefaAtual->prio_e;
+        return;
+    }
+    task->prio_e = prio;
+    task->prio_d = task->prio_e;
+}
+
+int task_getprio (task_t *task){
+    if (task == NULL){
+        return tarefaAtual->prio_e;
+    }
+    return task->prio_e;
+}
+
 task_t* scheduler(){
     task_t* aux = TarefasProntas;
-    TarefasProntas = TarefasProntas->next;
+    task_t* aux2 = aux->next;
+    int tam_fila = queue_size((queue_t*)TarefasProntas);
+    short verificador[tam_fila];
+    memset(verificador, 0, tam_fila*sizeof(short));
+    for(int i = 0; i < tam_fila; i++){
+        for(int l = 0; l < tam_fila; l++){
+            if (aux2->prio_d < aux->prio_d)
+                aux = aux2;
+            else if (verificador[l] == 0){
+                verificador[l] = 1;
+                aux2->prio_d--;
+            }
+
+            aux2 = aux2->next;
+        }
+    }
+    
+    aux->prio_d = aux->prio_e;
     return aux;
 }
 
@@ -31,7 +66,7 @@ void dispatcher(){
     while(userTasks > 0){
         // escolhe a próxima tarefa a executar
         task_t *proxima = scheduler();
-
+        
         // escalonador escolheu uma tarefa?      
         if(proxima != NULL){
 
@@ -47,7 +82,7 @@ void dispatcher(){
                 case TERMINADA:
                     userTasks--;
                     free((*proxima).context.uc_stack.ss_sp);
-                    queue_remove((queue_t **)&TarefasProntas, (queue_t *)&tarefaAtual);
+                    queue_remove((queue_t **)&TarefasProntas, (queue_t *)proxima);
                     break; 
                 case SUSPENSA:
 
@@ -105,6 +140,8 @@ int task_create (task_t *task,		    // descritor da nova tarefa
     task->next = NULL;
     task->prev = NULL;
     task->preemptable = 1;
+    task->prio_e = 0;
+    task->prio_d = task->prio_e;
 
     makecontext (&task->context, (void*)(*start_func), 1, arg) ;
 
