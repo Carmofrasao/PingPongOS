@@ -14,20 +14,22 @@ struct sigaction action ;
 // estrutura de inicialização to timer
 struct itimerval timer;
 
+// possiveis estados de cada tarefa
 enum estados {
     TERMINADA = 0,
     PRONTA,  
     SUSPENSA 
 } status;
 
-#define STACKSIZE 64*1024
-int cont;
-task_t *tarefaAtual;
-task_t ContextMain;
-task_t ContextDispatcher;
-task_t *TarefasProntas;
-int userTasks;
-short quantum ;   // tempo de vida da tarefa
+#define STACKSIZE 64*1024   // Tamanho da stack de cada tarefa
+int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
+task_t *tarefaAtual;        // Tarefa que esta no processador no momento
+task_t ContextMain;         // Tarefa da main
+task_t ContextDispatcher;   // Tarefa do dispatcher
+task_t *TarefasProntas;     // Vertor de tarefas prontas
+int userTasks;              // Numero de tarefas de usuario
+short quantum ;             // Tempo de vida da tarefa
+unsigned int time ;         // Tempo do sistema
 
 // libera o processador para a próxima tarefa, retornando à fila de tarefas
 // prontas ("ready queue")
@@ -37,8 +39,10 @@ void task_yield (){
 
 // tratador do sinal
 void tratador (int signum){
+    
     if(tarefaAtual->TaskUser == 1){
         if (quantum > 0){
+            time++;
             quantum--;
             return;
         }
@@ -64,9 +68,11 @@ int task_getprio (task_t *task){
     return task->prio_e;
 }
 
+// define a tarefa mais prioritaria
 task_t* scheduler(){
     task_t* aux = TarefasProntas;
     task_t* aux2 = aux->next;
+    // percorre todas as tarefas
     while (aux2 != TarefasProntas){
         if (aux2->prio_d < aux->prio_d){
             aux->prio_d--;
@@ -90,12 +96,12 @@ void dispatcher(){
         
         // escalonador escolheu uma tarefa?      
         if(proxima != NULL){
-
             quantum = 20;
-
+            int t1 = systime();
             // transfere controle para a próxima tarefa
             task_switch (proxima);
-            
+            int t2 = systime();
+            proxima->time_exec += (t2 - t1);
             // voltando ao dispatcher, trata a tarefa de acordo com seu estado
             // caso o estado da tarefa "próxima" seja:
             switch ( proxima->status ){
@@ -122,11 +128,11 @@ void dispatcher(){
 void ppos_init (){
     /* desativa o buffer da saida padrao (stdout), usado pela função printf */
     setvbuf (stdout, 0, _IONBF, 0);
-    
-    cont = 0;
+    time = 0;
+    ContadorDeTarefas = 0;
     userTasks = 0;
     
-    ContextMain.id = cont;
+    ContextMain.id = ContadorDeTarefas;
     ContextMain.prev = NULL;
     ContextMain.next = NULL;
     ContextMain.TaskUser = 0;
@@ -182,8 +188,8 @@ int task_create (task_t *task,		    // descritor da nova tarefa
         return -1;
     }
 
-    cont++;
-    task->id = cont;
+    ContadorDeTarefas++;
+    task->id = ContadorDeTarefas;
 
     task->next = NULL;
     task->prev = NULL;
@@ -200,11 +206,17 @@ int task_create (task_t *task,		    // descritor da nova tarefa
 
     task->TaskUser = 1;
 
+    task->time_init = systime();
+    task->time_exec = 0;
+    task->n_ativa = 0;
+
     return task->id;
 }
 
 // Termina a tarefa corrente, indicando um valor de status encerramento
 void task_exit (int exit_code){
+    tarefaAtual->time_exit = systime();
+    printf("Task %d exit: execution time %d ms, processor time %d ms, %d activations\n", tarefaAtual->id, tarefaAtual->time_exit-tarefaAtual->time_init, tarefaAtual->time_exec, tarefaAtual->n_ativa);
     tarefaAtual->status = TERMINADA;
     if(tarefaAtual != &ContextDispatcher)
         task_switch(&ContextDispatcher);
@@ -216,6 +228,7 @@ void task_exit (int exit_code){
 
 // alterna a execução para a tarefa indicada
 int task_switch (task_t *task){
+    task->n_ativa++;
     task_t * aux = tarefaAtual;
     tarefaAtual = task;
     swapcontext(&aux->context, &task->context);
@@ -225,4 +238,9 @@ int task_switch (task_t *task){
 // retorna o identificador da tarefa corrente (main deve ser 0)
 int task_id (){
     return tarefaAtual->id;
+}
+
+// retorna o relógio atual (em milisegundos)
+unsigned int systime (){
+    return time;
 }
