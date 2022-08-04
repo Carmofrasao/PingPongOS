@@ -26,6 +26,7 @@ typedef struct task_t
   int n_ativa ;                       // numero de ativações da tarefa
   struct task_t * tarefas_suspensas ; // fila de tarefas suspensas
   int ec ;                            // exit code
+  int sleep_time;
   // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 

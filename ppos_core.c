@@ -27,6 +27,7 @@ task_t *tarefaAtual;        // Tarefa que esta no processador no momento
 task_t ContextMain;         // Tarefa da main
 task_t ContextDispatcher;   // Tarefa do dispatcher
 task_t *TarefasProntas;     // Vertor de tarefas prontas
+task_t *Dormitorio;         // Vetor de tarefas suspensas
 int userTasks;              // Numero de tarefas de usuario
 short quantum ;             // Tempo de vida da tarefa
 unsigned int time ;         // Tempo do sistema
@@ -39,10 +40,9 @@ void task_yield (){
 
 // tratador do sinal
 void tratador (int signum){
-    
+    time++;
     if(tarefaAtual->TaskUser == 1){
         if (quantum > 0){
-            time++;
             quantum--;
             return;
         }
@@ -71,20 +71,22 @@ int task_getprio (task_t *task){
 // define a tarefa mais prioritaria
 task_t* scheduler(){
     task_t* aux = TarefasProntas;
-    task_t* aux2 = aux->next;
-    // percorre todas as tarefas
-    while (aux2 != TarefasProntas){
-        if (aux2->prio_d < aux->prio_d){
-            aux->prio_d--;
-            aux = aux2;
+    if(aux != NULL){
+        task_t* aux2 = aux->next;
+        // percorre todas as tarefas
+        while (aux2 != TarefasProntas){
+            if (aux2->prio_d < aux->prio_d){
+                aux->prio_d--;
+                aux = aux2;
+            }
+            else
+                aux2->prio_d--;
+            
+            aux2 = aux2->next;
         }
-        else
-            aux2->prio_d--;
         
-        aux2 = aux2->next;
+        aux->prio_d = aux->prio_e;
     }
-    
-    aux->prio_d = aux->prio_e;
     return aux;
 }
 
@@ -94,6 +96,22 @@ void dispatcher(){
         // escolhe a próxima tarefa a executar
         task_t *proxima = scheduler();
         
+        // acordando tarefas em sleep
+        task_t *aux = Dormitorio;
+        if(aux != NULL){
+            task_t *aux1 = Dormitorio->next;
+            while (aux1 != Dormitorio){
+                if(systime() == aux->sleep_time){
+                    task_resume(aux, &Dormitorio);
+                }
+                aux = aux1;
+                aux1 = aux->next;
+            };
+            if(systime() == aux->sleep_time){
+                task_resume(aux, &Dormitorio);
+            }
+        }
+
         // escalonador escolheu uma tarefa?      
         if(proxima != NULL){
             quantum = 20;
@@ -275,4 +293,10 @@ void task_resume (task_t *task, task_t **queue){
     queue_remove((queue_t **)queue, (queue_t *)task);
     task->status = PRONTA;
     queue_append((queue_t **)&TarefasProntas, (queue_t *)task);
+}
+
+// suspende a tarefa corrente por t milissegundos
+void task_sleep (int t){
+    tarefaAtual->sleep_time = systime() + t;
+    task_suspend(&Dormitorio);
 }
