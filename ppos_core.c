@@ -101,13 +101,13 @@ void dispatcher(){
         if(aux != NULL){
             task_t *aux1 = Dormitorio->next;
             while (aux1 != Dormitorio){
-                if(systime() == aux->sleep_time){
+                if(systime() >= aux->sleep_time){
                     task_resume(aux, &Dormitorio);
                 }
                 aux = aux1;
                 aux1 = aux->next;
             };
-            if(systime() == aux->sleep_time){
+            if(systime() >= aux->sleep_time){
                 task_resume(aux, &Dormitorio);
             }
         }
