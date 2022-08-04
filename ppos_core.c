@@ -131,14 +131,12 @@ void ppos_init (){
     time = 0;
     ContadorDeTarefas = 0;
     userTasks = 0;
-    
-    ContextMain.id = ContadorDeTarefas;
-    ContextMain.prev = NULL;
-    ContextMain.next = NULL;
-    ContextMain.TaskUser = 0;
-    tarefaAtual = &ContextMain;
-    
     TarefasProntas = NULL;
+    
+    task_create(&ContextMain, NULL, NULL);
+
+    tarefaAtual = &ContextMain;
+
     task_create(&ContextDispatcher, dispatcher, NULL);
     queue_remove((queue_t **)&TarefasProntas, (queue_t *)&ContextDispatcher);
     userTasks--;
@@ -166,6 +164,7 @@ void ppos_init (){
         perror ("Erro em setitimer: ") ;
         exit (1) ;
     }
+    task_yield ();
 }
 
 // Cria uma nova tarefa. Retorna um ID> 0 ou erro.
@@ -188,8 +187,8 @@ int task_create (task_t *task,		    // descritor da nova tarefa
         return -1;
     }
 
-    ContadorDeTarefas++;
     task->id = ContadorDeTarefas;
+    ContadorDeTarefas++;
 
     task->next = NULL;
     task->prev = NULL;
