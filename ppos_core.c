@@ -208,6 +208,7 @@ int task_create (task_t *task,		    // descritor da nova tarefa
     task->time_init = systime();
     task->time_exec = 0;
     task->n_ativa = 0;
+    task->tarefas_suspensas = NULL;
 
     return task->id;
 }
@@ -217,6 +218,15 @@ void task_exit (int exit_code){
     tarefaAtual->time_exit = systime();
     printf("Task %d exit: execution time %d ms, processor time %d ms, %d activations\n", tarefaAtual->id, tarefaAtual->time_exit-tarefaAtual->time_init, tarefaAtual->time_exec, tarefaAtual->n_ativa);
     tarefaAtual->status = TERMINADA;
+    task_t *aux = tarefaAtual->tarefas_suspensas;
+    if(aux != NULL){
+        do{
+            task_resume(aux, &tarefaAtual->tarefas_suspensas);
+            aux->ec = exit_code;
+            aux = aux->next;
+        }while (tarefaAtual->tarefas_suspensas != NULL);
+    } 
+
     if(tarefaAtual != &ContextDispatcher)
         task_switch(&ContextDispatcher);
     else{
@@ -242,4 +252,27 @@ int task_id (){
 // retorna o relógio atual (em milisegundos)
 unsigned int systime (){
     return time;
+}
+
+int task_join (task_t *task){
+    if(task->status == TERMINADA || task == NULL){
+        return -1;
+    }
+    task_suspend(&task->tarefas_suspensas);
+    return tarefaAtual->ec;
+}
+
+// suspende a tarefa atual na fila "queue"
+void task_suspend (task_t **queue){
+    queue_remove((queue_t **)&TarefasProntas, (queue_t *)tarefaAtual);
+    tarefaAtual->status = SUSPENSA;
+    queue_append((queue_t **)queue, (queue_t *)tarefaAtual);
+    task_yield();
+}
+
+// acorda a tarefa indicada, que está suspensa na fila indicada
+void task_resume (task_t *task, task_t **queue){
+    queue_remove((queue_t **)queue, (queue_t *)task);
+    task->status = PRONTA;
+    queue_append((queue_t **)&TarefasProntas, (queue_t *)task);
 }
