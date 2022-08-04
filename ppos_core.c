@@ -5,7 +5,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "queue.h"
-#include <string.h>
+#include <signal.h>
+#include <sys/time.h>
+
+// estrutura que define um tratador de sinal (deve ser global ou static)
+struct sigaction action ;
+
+// estrutura de inicialização to timer
+struct itimerval timer;
 
 enum estados {
     TERMINADA = 0,
@@ -20,6 +27,25 @@ task_t ContextMain;
 task_t ContextDispatcher;
 task_t *TarefasProntas;
 int userTasks;
+short quantum ;   // tempo de vida da tarefa
+
+// libera o processador para a próxima tarefa, retornando à fila de tarefas
+// prontas ("ready queue")
+void task_yield (){
+    task_switch(&ContextDispatcher);
+}
+
+// tratador do sinal
+void tratador (int signum){
+    if(tarefaAtual->TaskUser == 1){
+        if (quantum > 0){
+            quantum--;
+            return;
+        }
+        else if (quantum == 0)
+            task_yield();
+    }
+}
 
 void task_setprio (task_t *task, int prio){
     if (task == NULL){
@@ -41,20 +67,15 @@ int task_getprio (task_t *task){
 task_t* scheduler(){
     task_t* aux = TarefasProntas;
     task_t* aux2 = aux->next;
-    int tam_fila = queue_size((queue_t*)TarefasProntas);
-    short verificador[tam_fila];
-    memset(verificador, 0, tam_fila*sizeof(short));
-    for(int i = 0; i < tam_fila; i++){
-        for(int l = 0; l < tam_fila; l++){
-            if (aux2->prio_d < aux->prio_d)
-                aux = aux2;
-            else if (verificador[l] == 0){
-                verificador[l] = 1;
-                aux2->prio_d--;
-            }
-
-            aux2 = aux2->next;
+    while (aux2 != TarefasProntas){
+        if (aux2->prio_d < aux->prio_d){
+            aux->prio_d--;
+            aux = aux2;
         }
+        else
+            aux2->prio_d--;
+        
+        aux2 = aux2->next;
     }
     
     aux->prio_d = aux->prio_e;
@@ -69,6 +90,8 @@ void dispatcher(){
         
         // escalonador escolheu uma tarefa?      
         if(proxima != NULL){
+
+            quantum = 20;
 
             // transfere controle para a próxima tarefa
             task_switch (proxima);
@@ -106,12 +129,37 @@ void ppos_init (){
     ContextMain.id = cont;
     ContextMain.prev = NULL;
     ContextMain.next = NULL;
+    ContextMain.TaskUser = 0;
     tarefaAtual = &ContextMain;
     
     TarefasProntas = NULL;
     task_create(&ContextDispatcher, dispatcher, NULL);
     queue_remove((queue_t **)&TarefasProntas, (queue_t *)&ContextDispatcher);
     userTasks--;
+    ContextDispatcher.TaskUser = 0;
+
+    // registra a ação para o sinal de timer SIGALRM
+    action.sa_handler = tratador ;
+    sigemptyset (&action.sa_mask) ;
+    action.sa_flags = 0 ;
+    if (sigaction (SIGALRM, &action, 0) < 0)
+    {
+        perror ("Erro em sigaction: ") ;
+        exit (1) ;
+    }
+
+    // ajusta valores do temporizador
+    timer.it_value.tv_usec = 1000 ;      // primeiro disparo, em micro-segundos
+    timer.it_value.tv_sec  = 0 ;      // primeiro disparo, em segundos
+    timer.it_interval.tv_usec = 1000 ;   // disparos subsequentes, em micro-segundos
+    timer.it_interval.tv_sec  = 0 ;   // disparos subsequentes, em segundos
+
+    // arma o temporizador ITIMER_REAL (vide man setitimer)
+    if (setitimer (ITIMER_REAL, &timer, 0) < 0)
+    {
+        perror ("Erro em setitimer: ") ;
+        exit (1) ;
+    }
 }
 
 // Cria uma nova tarefa. Retorna um ID> 0 ou erro.
@@ -149,6 +197,9 @@ int task_create (task_t *task,		    // descritor da nova tarefa
 
     queue_append((queue_t **)&TarefasProntas, (queue_t *)task);
     userTasks++;
+
+    task->TaskUser = 1;
+
     return task->id;
 }
 
@@ -174,10 +225,4 @@ int task_switch (task_t *task){
 // retorna o identificador da tarefa corrente (main deve ser 0)
 int task_id (){
     return tarefaAtual->id;
-}
-
-// libera o processador para a próxima tarefa, retornando à fila de tarefas
-// prontas ("ready queue")
-void task_yield (){
-    task_switch(&ContextDispatcher);
 }

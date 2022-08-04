@@ -19,6 +19,7 @@ typedef struct task_t
   short preemptable ;			// pode ser preemptada?
   short prio_e ;    //  prioridade estatica da tarefa
   short prio_d ;    // prioridade dinamica da tarefa
+  short TaskUser ;   // tarefa de usuario
    // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 
