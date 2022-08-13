@@ -26,13 +26,15 @@ typedef struct task_t
   int n_ativa ;                       // numero de ativações da tarefa
   struct task_t * tarefas_suspensas ; // fila de tarefas suspensas
   int ec ;                            // exit code
-  int sleep_time;
+  int sleep_time;                     // tempo do sleep
   // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 
 // estrutura que define um semáforo
 typedef struct
 {
+  int counter ;                       // contador do semafaro
+  task_t * queue ;                    // fila do semafaro
   // preencher quando necessário
 } semaphore_t ;
 

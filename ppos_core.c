@@ -32,40 +32,18 @@ int userTasks;              // Numero de tarefas de usuario
 short quantum ;             // Tempo de vida da tarefa
 unsigned int time ;         // Tempo do sistema
 
-// libera o processador para a próxima tarefa, retornando à fila de tarefas
-// prontas ("ready queue")
-void task_yield (){
-    task_switch(&ContextDispatcher);
+int lock_u = 0 ;
+int lock_d = 0 ;
+ 
+void enter_cs (int *lock)
+{
+  // atomic OR (Intel macro for GCC)
+  while (__sync_fetch_and_or (lock, 1)) ;   // busy waiting
 }
-
-// tratador do sinal
-void tratador (int signum){
-    time++;
-    if(tarefaAtual->TaskUser == 1){
-        if (quantum > 0){
-            quantum--;
-            return;
-        }
-        else if (quantum == 0)
-            task_yield();
-    }
-}
-
-void task_setprio (task_t *task, int prio){
-    if (task == NULL){
-        tarefaAtual->prio_e = prio;
-        tarefaAtual->prio_d = tarefaAtual->prio_e;
-        return;
-    }
-    task->prio_e = prio;
-    task->prio_d = task->prio_e;
-}
-
-int task_getprio (task_t *task){
-    if (task == NULL){
-        return tarefaAtual->prio_e;
-    }
-    return task->prio_e;
+ 
+void leave_cs (int *lock)
+{
+  (*lock) = 0 ;
 }
 
 // define a tarefa mais prioritaria
@@ -91,6 +69,7 @@ task_t* scheduler(){
 }
 
 void dispatcher(){
+    int td_1 = systime();
     // enquanto houverem tarefas de usuário
     while(userTasks > 0){
         // escolhe a próxima tarefa a executar
@@ -137,9 +116,24 @@ void dispatcher(){
             }      
         }
     }
+    int td_2 = systime();
+    ContextDispatcher.time_exec += (td_2 - td_1);
 
     // encerra a tarefa dispatcher
     task_exit(0);
+}
+
+// tratador do sinal
+void tratador (int signum){
+    time++;
+    if(tarefaAtual->TaskUser == 1){
+        if (quantum > 0){
+            quantum--;
+            return;
+        }
+        else if (quantum == 0)
+            task_yield();
+    }
 }
 
 // Inicializa o sistema operacional; deve ser chamada no inicio do main()
@@ -267,19 +261,6 @@ int task_id (){
     return tarefaAtual->id;
 }
 
-// retorna o relógio atual (em milisegundos)
-unsigned int systime (){
-    return time;
-}
-
-int task_join (task_t *task){
-    if(task->status == TERMINADA || task == NULL){
-        return -1;
-    }
-    task_suspend(&task->tarefas_suspensas);
-    return tarefaAtual->ec;
-}
-
 // suspende a tarefa atual na fila "queue"
 void task_suspend (task_t **queue){
     queue_remove((queue_t **)&TarefasProntas, (queue_t *)tarefaAtual);
@@ -295,8 +276,105 @@ void task_resume (task_t *task, task_t **queue){
     queue_append((queue_t **)&TarefasProntas, (queue_t *)task);
 }
 
+// libera o processador para a próxima tarefa, retornando à fila de tarefas
+// prontas ("ready queue")
+void task_yield (){
+    task_switch(&ContextDispatcher);
+}
+
+void task_setprio (task_t *task, int prio){
+    if (task == NULL){
+        tarefaAtual->prio_e = prio;
+        tarefaAtual->prio_d = tarefaAtual->prio_e;
+        return;
+    }
+    task->prio_e = prio;
+    task->prio_d = task->prio_e;
+}
+
+int task_getprio (task_t *task){
+    if (task == NULL){
+        return tarefaAtual->prio_e;
+    }
+    return task->prio_e;
+}
+
+int task_join (task_t *task){
+    if(task->status == TERMINADA || task == NULL){
+        return -1;
+    }
+    task_suspend(&task->tarefas_suspensas);
+    return tarefaAtual->ec;
+}
+
 // suspende a tarefa corrente por t milissegundos
 void task_sleep (int t){
     tarefaAtual->sleep_time = systime() + t;
     task_suspend(&Dormitorio);
+}
+
+// retorna o relógio atual (em milisegundos)
+unsigned int systime (){
+    return time;
+}
+
+// cria um semáforo com valor inicial "value"
+int sem_create (semaphore_t *s, int value){
+    s->counter = value;
+    s->queue = NULL;
+    if (s == NULL){
+        return -1;
+    }
+    return 0;
+}
+
+// requisita o semáforo
+int sem_down (semaphore_t *s){
+    enter_cs (&lock_d) ;
+    if(s == NULL){
+        leave_cs (&lock_d) ;
+        return -1;
+    }
+    s->counter--;
+    if(s->counter < 0){
+        leave_cs (&lock_d) ;
+        task_suspend(&s->queue);
+        return 0;
+    }
+    leave_cs (&lock_d) ;
+    return 0;
+}
+
+// libera o semáforo
+int sem_up (semaphore_t *s){
+    enter_cs (&lock_u) ;
+    if(s == NULL){
+        leave_cs (&lock_u) ;
+        return -1;
+    }
+    
+    s->counter++;
+    if(s->counter <= 0){
+        task_resume(s->queue, &s->queue);
+        leave_cs (&lock_u) ;
+        return 0;
+    }
+    leave_cs (&lock_u) ;
+    return -1;
+}
+
+// destroi o semáforo, liberando as tarefas bloqueadas
+int sem_destroy (semaphore_t *s){
+    if(s == NULL){
+        return -1;
+    }
+    task_t *aux = s->queue;
+    if(aux != NULL){
+        do{
+            sem_up(s);
+            aux = aux->next;
+        }while (s->queue != NULL);
+        s = NULL;
+    } 
+    return 0;
 }
