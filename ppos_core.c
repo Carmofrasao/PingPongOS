@@ -243,7 +243,7 @@ void task_exit (int exit_code){
         task_switch(&ContextDispatcher);
     else{
         free((*tarefaAtual).context.uc_stack.ss_sp);
-        task_switch(&ContextMain);
+        exit(0);
     }
 }
 
