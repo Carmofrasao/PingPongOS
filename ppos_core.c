@@ -4,6 +4,7 @@
 #include <ucontext.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "queue.h"
 #include <signal.h>
 #include <sys/time.h>
@@ -374,7 +375,96 @@ int sem_destroy (semaphore_t *s){
             sem_up(s);
             aux = aux->next;
         }while (s->queue != NULL);
+        s->queue = NULL;
         s = NULL;
     } 
     return 0;
+}
+
+// cria uma fila para até max mensagens de size bytes cada
+int mqueue_create (mqueue_t *queue, int max, int size){
+    
+    queue->buffer = malloc(max * size);
+    if (!queue->buffer)
+        return -1;
+
+    queue->buffer_fim = (char*)queue->buffer + max * size;
+    queue->max = max;
+    queue->count = 0;
+    queue->size = size;
+    queue->inicio = queue->buffer;
+    queue->fim = queue->buffer;
+
+    if(sem_create (&queue->s_buffer, 1) == -1 || sem_create (&queue->s_item, 0) == -1 || sem_create (&queue->s_vaga, max) == -1)
+        return -1;
+
+    return 0;
+}
+
+// envia uma mensagem para a fila
+int mqueue_send (mqueue_t *queue, void *msg){
+    if(queue == NULL || !queue->buffer || queue->fim == NULL || queue->buffer_fim == NULL){
+        sem_up (&queue->s_buffer);
+        sem_up (&queue->s_vaga);
+        return -1;
+    }
+
+    sem_down (&queue->s_vaga);
+
+    sem_down (&queue->s_buffer);
+    
+    memcpy(queue->inicio, msg, queue->size);
+    queue->inicio = (char*)queue->inicio + queue->size;
+    if(queue->inicio == queue->buffer_fim)
+        queue->inicio = queue->buffer;
+    queue->count++;
+    
+    sem_up (&queue->s_buffer);
+
+    sem_up (&queue->s_item);
+    return 0;
+}
+
+// recebe uma mensagem da fila
+int mqueue_recv (mqueue_t *queue, void *msg){
+    
+    sem_down (&queue->s_item);
+
+    sem_down (&queue->s_buffer);
+    if(queue == NULL || !queue->buffer || queue->fim == NULL || queue->buffer_fim == NULL){
+        sem_up (&queue->s_buffer);
+        sem_up (&queue->s_item);
+        return -1;
+    }
+    memcpy(msg, queue->fim, queue->size);
+    queue->fim = (char*)queue->fim + queue->size;
+    if(queue->fim == queue->buffer_fim)
+        queue->fim = queue->buffer;
+    queue->count--;
+    sem_up (&queue->s_buffer);
+
+    sem_up (&queue->s_vaga);
+    return 0;
+}
+
+// destroi a fila, liberando as tarefas bloqueadas
+int mqueue_destroy (mqueue_t *queue){
+    queue->buffer = NULL;
+    free(queue->buffer);
+
+    queue->buffer_fim = NULL;
+    queue->inicio = NULL;
+    queue->fim = NULL;
+
+    sem_destroy (&queue->s_buffer) ;
+    sem_destroy (&queue->s_item) ;
+    sem_destroy (&queue->s_vaga) ;
+
+    queue = NULL;
+    return 0;
+}
+
+// informa o número de mensagens atualmente na fila
+int mqueue_msgs (mqueue_t *queue){
+    return queue->count;
 }
