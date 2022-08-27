@@ -67,4 +67,24 @@ typedef struct
   // preencher quando necessário
 } mqueue_t ;
 
+// possiveis estados de cada tarefa
+enum estados {
+    TERMINADA = 0,
+    PRONTA,  
+    SUSPENSA 
+} status;
+
+#define STACKSIZE 64*1024   // Tamanho da stack de cada tarefa
+int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
+task_t *tarefaAtual;        // Tarefa que esta no processador no momento
+task_t ContextMain;         // Tarefa da main
+task_t ContextDispatcher;   // Tarefa do dispatcher
+task_t ContextDrive;        // Tarefa do disco
+task_t *TarefasProntas;     // Tarefas prontas
+task_t *Dormitorio;         // Tarefas suspensas
+int userTasks;              // Numero de tarefas de usuario
+short quantum ;             // Tempo de vida da tarefa
+unsigned int time ;         // Tempo do sistema
+short sinal;                // Sinal para acordar o disco 
+
 #endif

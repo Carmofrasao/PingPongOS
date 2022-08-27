@@ -7,6 +7,8 @@
 #ifndef __DISK_MGR__
 #define __DISK_MGR__
 
+#include "ppos_data.h"
+
 // estruturas de dados e rotinas de inicializacao e acesso
 // a um dispositivo de entrada/saida orientado a blocos,
 // tipicamente um disco rigido.
@@ -14,8 +16,12 @@
 // estrutura que representa um disco no sistema operacional
 typedef struct
 {
+  semaphore_t sem_disk;       // Semaforo do disco
+  task_t *fila_disco;         // Tarefas de disco
   // completar com os campos necessarios
 } disk_t ;
+
+disk_t Disk;                  // Disco
 
 // inicializacao do gerente de disco
 // retorna -1 em erro ou 0 em sucesso

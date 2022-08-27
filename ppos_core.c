@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "queue.h"
+#include "disk.h"
+#include "ppos_disk.h"
 #include <signal.h>
 #include <sys/time.h>
 
@@ -15,57 +17,48 @@ struct sigaction action ;
 // estrutura de inicialização to timer
 struct itimerval timer;
 
-// possiveis estados de cada tarefa
-enum estados {
-    TERMINADA = 0,
-    PRONTA,  
-    SUSPENSA 
-} status;
-
-#define STACKSIZE 64*1024   // Tamanho da stack de cada tarefa
-int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
-task_t *tarefaAtual;        // Tarefa que esta no processador no momento
-task_t ContextMain;         // Tarefa da main
-task_t ContextDispatcher;   // Tarefa do dispatcher
-task_t ContextDrive;        // Tarefa do disco
-task_t *TarefasProntas;     // Tarefas prontas
-task_t *Dormitorio;         // Tarefas suspensas
-task_t *TarefasDeDisco;     // Tarefas de disco
-int userTasks;              // Numero de tarefas de usuario
-short quantum ;             // Tempo de vida da tarefa
-unsigned int time ;         // Tempo do sistema
-
 int lock_u = 0 ;
 int lock_d = 0 ;
 
 // tratador do sinal do disco
 void tratador_disk (int signum){
+    sinal = 1;
+    task_resume(&ContextDrive, &Dormitorio);
     task_switch(&ContextDrive);
 }
 
 void diskDriverBody (void * args)
 {
-   while (1) 
-   {
-      // obtém o semáforo de acesso ao disco
- 
-      // se foi acordado devido a um sinal do disco
-      if (disco gerou um sinal)
-      {
-         // acorda a tarefa cujo pedido foi atendido
-      }
- 
-      // se o disco estiver livre e houver pedidos de E/S na fila
-      if (disco_livre && (fila_disco != NULL))
-      {
-         // escolhe na fila o pedido a ser atendido, usando FCFS
-         // solicita ao disco a operação de E/S, usando disk_cmd()
-      }
- 
-      // libera o semáforo de acesso ao disco
- 
-      // suspende a tarefa corrente (retorna ao dispatcher)
-   }
+    while (1) 
+    {
+        // obtém o semáforo de acesso ao disco
+        sem_down(&Disk.sem_disk);
+    
+        // se foi acordado devido a um sinal do disco
+        if (sinal == 1)
+        {
+            sinal = 0;
+            // acorda a tarefa cujo pedido foi atendido
+            task_resume(Disk.fila_disco, &Disk.fila_disco);
+        }
+        
+        // se o disco estiver livre e houver pedidos de E/S na fila
+        if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (Disk.fila_disco != NULL))
+        {
+            printf("buffer: %s\n", (char*)Disk.fila_disco->buffer);
+            // escolhe na fila o pedido a ser atendido, usando FCFS
+            task_t *aux = Disk.fila_disco;
+            // solicita ao disco a operação de E/S, usando disk_cmd()
+            if(disk_cmd(aux->type, aux->block, &aux->buffer) < 0)
+                exit(-1);
+        }
+    
+        // libera o semáforo de acesso ao disco
+        sem_up(&Disk.sem_disk);
+    
+        // suspende a tarefa corrente (retorna ao dispatcher)
+        task_suspend(&Dormitorio);
+    }
 }
  
 void enter_cs (int *lock)
@@ -191,6 +184,10 @@ void ppos_init (){
     queue_remove((queue_t **)&TarefasProntas, (queue_t *)&ContextDrive);
     userTasks--;
     ContextDrive.TaskUser = 0;
+    sinal = 0;
+
+    ContextDrive.status = SUSPENSA;
+    queue_append((queue_t **)&Dormitorio, (queue_t *)&ContextDrive);
 
     // registra a ação para o sinal de timer SIGALRM
     action.sa_handler = tratador ;
@@ -211,6 +208,9 @@ void ppos_init (){
         perror ("Erro em sigaction: ") ;
         exit (1) ;
     }
+
+    Disk.sem_disk.counter = 1;
+    Disk.fila_disco = NULL;
 
     // ajusta valores do temporizador
     timer.it_value.tv_usec = 1000 ;      // primeiro disparo, em micro-segundos
