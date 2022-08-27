@@ -38,7 +38,7 @@ int disk_block_read (int block, void *buffer){
     tarefaAtual->type = DISK_CMD_READ;
  
     // inclui o pedido na fila_disco
-    queue_append((queue_t **)&fila_disco, (queue_t *)tarefaAtual);
+    queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual);
     
     if (ContextDrive.status == SUSPENSA)
     {
@@ -66,7 +66,7 @@ int disk_block_write (int block, void *buffer){
     tarefaAtual->type = DISK_CMD_READ;
  
     // inclui o pedido na fila_disco
-    queue_append((queue_t **)&fila_disco, (queue_t *)tarefaAtual);
+    queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual);
  
     if (ContextDrive.status == SUSPENSA)
     {
