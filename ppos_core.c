@@ -43,8 +43,12 @@ void diskDriverBody (void * args)
         }
         
         // se o disco estiver livre e houver pedidos de E/S na fila
-        if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (Disk.fila_disco != NULL))
+        if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (&Disk.fila_disco != NULL))
         {
+            /*
+                O ERRO ESTA AQUI
+                NÃO SEI COMO ACESSAR Disk.fila_disco DIREITO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            */
             // escolhe na fila o pedido a ser atendido, usando FCFS
             task_t *aux = Disk.fila_disco;
             // solicita ao disco a operação de E/S, usando disk_cmd()
