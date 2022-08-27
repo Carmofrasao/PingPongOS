@@ -45,7 +45,6 @@ void diskDriverBody (void * args)
         // se o disco estiver livre e houver pedidos de E/S na fila
         if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (Disk.fila_disco != NULL))
         {
-            printf("buffer: %s\n", (char*)Disk.fila_disco->buffer);
             // escolhe na fila o pedido a ser atendido, usando FCFS
             task_t *aux = Disk.fila_disco;
             // solicita ao disco a operação de E/S, usando disk_cmd()
