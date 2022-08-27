@@ -27,14 +27,45 @@ int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
 task_t *tarefaAtual;        // Tarefa que esta no processador no momento
 task_t ContextMain;         // Tarefa da main
 task_t ContextDispatcher;   // Tarefa do dispatcher
-task_t *TarefasProntas;     // Vertor de tarefas prontas
-task_t *Dormitorio;         // Vetor de tarefas suspensas
+task_t *TarefasProntas;     // Tarefas prontas
+task_t *Dormitorio;         // Tarefas suspensas
+task_t *TarefasDeDisco;     // Tarefas de disco
 int userTasks;              // Numero de tarefas de usuario
 short quantum ;             // Tempo de vida da tarefa
 unsigned int time ;         // Tempo do sistema
 
 int lock_u = 0 ;
 int lock_d = 0 ;
+
+// tratador do sinal do disco
+void tratador_disk (int signum){
+    
+}
+
+void diskDriverBody (void * args)
+{
+   while (1) 
+   {
+      // obtém o semáforo de acesso ao disco
+ 
+      // se foi acordado devido a um sinal do disco
+      if (disco gerou um sinal)
+      {
+         // acorda a tarefa cujo pedido foi atendido
+      }
+ 
+      // se o disco estiver livre e houver pedidos de E/S na fila
+      if (disco_livre && (fila_disco != NULL))
+      {
+         // escolhe na fila o pedido a ser atendido, usando FCFS
+         // solicita ao disco a operação de E/S, usando disk_cmd()
+      }
+ 
+      // libera o semáforo de acesso ao disco
+ 
+      // suspende a tarefa corrente (retorna ao dispatcher)
+   }
+}
  
 void enter_cs (int *lock)
 {
