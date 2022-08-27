@@ -7,7 +7,7 @@
 // numBlocks: tamanho do disco, em blocos
 // blockSize: tamanho de cada bloco do disco, em bytes
 int disk_mgr_init (int *numBlocks, int *blockSize){
-
+    
 }
 
 // leitura de um bloco, do disco para o buffer

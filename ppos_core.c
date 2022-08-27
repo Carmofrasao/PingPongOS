@@ -27,6 +27,7 @@ int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
 task_t *tarefaAtual;        // Tarefa que esta no processador no momento
 task_t ContextMain;         // Tarefa da main
 task_t ContextDispatcher;   // Tarefa do dispatcher
+task_t ContextDrive;        // Tarefa do disco
 task_t *TarefasProntas;     // Tarefas prontas
 task_t *Dormitorio;         // Tarefas suspensas
 task_t *TarefasDeDisco;     // Tarefas de disco
@@ -39,7 +40,7 @@ int lock_d = 0 ;
 
 // tratador do sinal do disco
 void tratador_disk (int signum){
-    
+    task_switch(&ContextDrive);
 }
 
 void diskDriverBody (void * args)
@@ -186,11 +187,26 @@ void ppos_init (){
     userTasks--;
     ContextDispatcher.TaskUser = 0;
 
+    task_create(&ContextDrive, diskDriverBody, NULL);
+    queue_remove((queue_t **)&TarefasProntas, (queue_t *)&ContextDrive);
+    userTasks--;
+    ContextDrive.TaskUser = 0;
+
     // registra a ação para o sinal de timer SIGALRM
     action.sa_handler = tratador ;
     sigemptyset (&action.sa_mask) ;
     action.sa_flags = 0 ;
     if (sigaction (SIGALRM, &action, 0) < 0)
+    {
+        perror ("Erro em sigaction: ") ;
+        exit (1) ;
+    }
+
+    // registra a ação para o sinal de timer SIGUSR1
+    action.sa_handler = tratador_disk ;
+    sigemptyset (&action.sa_mask) ;
+    action.sa_flags = 0 ;
+    if (sigaction (SIGUSR1, &action, 0) < 0)
     {
         perror ("Erro em sigaction: ") ;
         exit (1) ;
