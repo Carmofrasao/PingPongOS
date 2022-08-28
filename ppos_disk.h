@@ -26,9 +26,11 @@ typedef struct pedido
 // estrutura que representa um disco no sistema operacional
 typedef struct
 {
+  task_t ContextDrive;        // Tarefa do disco
   semaphore_t sem_disk;       // Semaforo do disco
   pedido *fila_disco;         // Tarefas de disco
   task_t *Dormitorio_Disk;    // Tarefas suspensas pelo disco
+  task_t *Quarto;             // Para suspender o Drive
   short sinal;                // sinal de ativação do disco
   // completar com os campos necessarios
 } disk_t ;

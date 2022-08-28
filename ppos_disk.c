@@ -47,20 +47,15 @@ int disk_block_read (int block, void *buffer){
         return -1;
     }
     
-    if (ContextDrive.status == SUSPENSA)
+    if (Disk.ContextDrive.status == SUSPENSA)
     {
         // acorda o gerente de disco (põe ele na fila de prontas)
-        task_resume(&ContextDrive, &Dormitorio);
+        task_resume(&Disk.ContextDrive, &Disk.Quarto);
     }
     
     // libera semáforo de acesso ao disco
     sem_up(&Disk.sem_disk);
     
-    // suspende a tarefa corrente (retorna ao dispatcher)
-    /*
-        O ERRO ESTA AQUI (linha 64)
-        A TAREFA QUE CHAMA disk_block_read NÃO ESTA SUSPENDENDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-    */
     task_suspend(&Disk.Dormitorio_Disk);
     return 0;
 }
@@ -85,20 +80,15 @@ int disk_block_write (int block, void *buffer){
         return -1;
     }
  
-    if (ContextDrive.status == SUSPENSA)
+    if (Disk.ContextDrive.status == SUSPENSA)
     {
         // acorda o gerente de disco (põe ele na fila de prontas)
-        task_resume(&ContextDrive, &Dormitorio);
+        task_resume(&Disk.ContextDrive, &Disk.Quarto);
     }
     
     // libera semáforo de acesso ao disco
     sem_up(&Disk.sem_disk);
     
-    // suspende a tarefa corrente (retorna ao dispatcher)
-    /*
-        O ERRO ESTA AQUI (linha 101)
-        A TAREFA QUE CHAMA disk_block_write NÃO ESTA SUSPENDENDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-    */
     task_suspend(&Disk.Dormitorio_Disk);
 
     return 0;

@@ -77,7 +77,6 @@ int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
 task_t *tarefaAtual;        // Tarefa que esta no processador no momento
 task_t ContextMain;         // Tarefa da main
 task_t ContextDispatcher;   // Tarefa do dispatcher
-task_t ContextDrive;        // Tarefa do disco
 task_t *TarefasProntas;     // Tarefas prontas
 task_t *Dormitorio;         // Tarefas suspensas
 int userTasks;              // Numero de tarefas de usuario

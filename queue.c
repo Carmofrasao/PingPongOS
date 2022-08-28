@@ -70,9 +70,11 @@ int queue_append (queue_t **queue, queue_t *elem){
 
     // testando condições de verificação
     if (queue == NULL || elem == NULL){
+        perror("ERRO! FILA E/OU ELEMENTO NÃO EXISTEM");
         return -1;
     }
     if (elem->next != NULL || elem->prev != NULL){
+        perror("ERRO! ELEMENTO ESTA EM OUTRA FILA");
         return -1;
     }
 
@@ -113,9 +115,19 @@ int queue_append (queue_t **queue, queue_t *elem){
 int queue_remove (queue_t **queue, queue_t *elem){
 
     // condições de verificação
-    if (queue == NULL || *queue == NULL || elem == NULL){
+    if (queue == NULL){
+        perror("ERRO! FILA NÃO EXISTE");
         return -1;
     }
+    if(*queue == NULL){
+        perror("ERRO! FILA VAZIA");
+        return -1;
+    }
+    if (elem == NULL){
+        perror("ERRO! ELEMENTO NÃO EXISTE");
+        return -1;
+    }
+    
 
     // caso a fila tenha somente 1 elemento e esse elemento seja da fila
     if ((*queue)->next == *queue && (*queue)->prev == *queue && elem == *queue){
@@ -156,6 +168,7 @@ int queue_remove (queue_t **queue, queue_t *elem){
 
     // caso o elemento não seja da lista
     if (aux1 != elem){
+        perror("ERRO! ELEMENTO NÃO ESTA NA FILA");
         return -1;
     }
     
