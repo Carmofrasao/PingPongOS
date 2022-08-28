@@ -6,7 +6,6 @@
 //------------------------------------------------------------------------------
 // Conta o numero de elementos na fila
 // Retorno: numero de elementos na fila
-
 int queue_size (queue_t *queue){
 
     if (queue == NULL){
@@ -33,7 +32,6 @@ int queue_size (queue_t *queue){
 // usa a biblioteca. Essa função deve ter o seguinte protótipo:
 //
 // void print_elem (void *ptr) ; // ptr aponta para o elemento a imprimir
-
 void queue_print (char *name, queue_t *queue, void print_elem (void*) ){
 
     printf("%s: [", name);
@@ -68,14 +66,15 @@ void queue_print (char *name, queue_t *queue, void print_elem (void*) ){
 // - o elemento deve existir
 // - o elemento nao deve estar em outra fila
 // Retorno: 0 se sucesso, <0 se ocorreu algum erro
-
 int queue_append (queue_t **queue, queue_t *elem){
 
     // testando condições de verificação
     if (queue == NULL || elem == NULL){
+        perror("ERRO! FILA E/OU ELEMENTO NÃO EXISTEM");
         return -1;
     }
     if (elem->next != NULL || elem->prev != NULL){
+        perror("ERRO! ELEMENTO ESTA EM OUTRA FILA");
         return -1;
     }
 
@@ -113,13 +112,22 @@ int queue_append (queue_t **queue, queue_t *elem){
 // - o elemento deve existir
 // - o elemento deve pertencer a fila indicada
 // Retorno: 0 se sucesso, <0 se ocorreu algum erro
-
 int queue_remove (queue_t **queue, queue_t *elem){
 
     // condições de verificação
-    if (queue == NULL || *queue == NULL || elem == NULL){
+    if (queue == NULL){
+        perror("ERRO! FILA NÃO EXISTE");
         return -1;
     }
+    if(*queue == NULL){
+        perror("ERRO! FILA VAZIA");
+        return -1;
+    }
+    if (elem == NULL){
+        perror("ERRO! ELEMENTO NÃO EXISTE");
+        return -1;
+    }
+    
 
     // caso a fila tenha somente 1 elemento e esse elemento seja da fila
     if ((*queue)->next == *queue && (*queue)->prev == *queue && elem == *queue){
@@ -160,6 +168,7 @@ int queue_remove (queue_t **queue, queue_t *elem){
 
     // caso o elemento não seja da lista
     if (aux1 != elem){
+        perror("ERRO! ELEMENTO NÃO ESTA NA FILA");
         return -1;
     }
     

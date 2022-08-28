@@ -12,21 +12,22 @@
 // Estrutura que define um Task Control Block (TCB)
 typedef struct task_t
 {
-  struct task_t *prev, *next ;        // ponteiros para usar em filas
-  int id ;				                    // identificador da tarefa
-  ucontext_t context ;			          // contexto armazenado da tarefa
-  short status ;			                // pronta, rodando, suspensa, ...
-  short preemptable ;			            // pode ser preemptada?
-  short prio_e ;                      // prioridade estatica da tarefa
-  short prio_d ;                      // prioridade dinamica da tarefa
-  short TaskUser ;                    // tarefa de usuario
-  int time_init ;                     // momento em que a tarefa entrou para a fila de tarefas prontas
-  int time_exit ;                     // momento em que a tarefa saiu da fila de tarefas prontas
-  int time_exec ;                     // tempo de execução da tarefa
-  int n_ativa ;                       // numero de ativações da tarefa
-  struct task_t * tarefas_suspensas ; // fila de tarefas suspensas
-  int ec ;                            // exit code
-  int sleep_time;                     // tempo do sleep
+  struct task_t *prev, *next ;        // Ponteiros para usar em filas
+  int id ;				                    // Identificador da tarefa
+  ucontext_t context ;			          // Contexto armazenado da tarefa
+  short status ;			                // Pronta, rodando, suspensa, ...
+  short preemptable ;			            // Pode ser preemptada?
+  short prio_e ;                      // Prioridade estatica da tarefa
+  short prio_d ;                      // Prioridade dinamica da tarefa
+  short TaskUser ;                    // Tarefa de usuario
+  int time_init ;                     // Momento em que a tarefa entrou para a fila de tarefas prontas
+  int time_exit ;                     // Momento em que a tarefa saiu da fila de tarefas prontas
+  int time_exec ;                     // Tempo de execução da tarefa
+  int n_ativa ;                       // Numero de ativações da tarefa
+  struct task_t * tarefas_suspensas ; // Fila de tarefas suspensas
+  int ec ;                            // Exit code
+  int sleep_time;                     // Tempo do sleep
+  void *buffer;                   // Endereço do buffer de dados
   // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 
@@ -63,5 +64,23 @@ typedef struct
   semaphore_t s_buffer, s_item, s_vaga ;  // samafaro da fila
   // preencher quando necessário
 } mqueue_t ;
+
+// possiveis estados de cada tarefa
+enum estados {
+    TERMINADA = 0,
+    PRONTA,  
+    SUSPENSA 
+} status;
+
+#define STACKSIZE 64*1024   // Tamanho da stack de cada tarefa
+int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
+task_t *tarefaAtual;        // Tarefa que esta no processador no momento
+task_t ContextMain;         // Tarefa da main
+task_t ContextDispatcher;   // Tarefa do dispatcher
+task_t *TarefasProntas;     // Tarefas prontas
+task_t *Dormitorio;         // Tarefas suspensas
+int userTasks;              // Numero de tarefas de usuario
+short quantum ;             // Tempo de vida da tarefa
+unsigned int time ;         // Tempo do sistema
 
 #endif

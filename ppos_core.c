@@ -6,35 +6,71 @@
 #include <stdlib.h>
 #include <string.h>
 #include "queue.h"
+#include "disk.h"
+#include "ppos_disk.h"
 #include <signal.h>
 #include <sys/time.h>
 
 // estrutura que define um tratador de sinal (deve ser global ou static)
 struct sigaction action ;
 
+// estrutura que define um tratador de sinal do disco(deve ser global ou static)
+struct sigaction action_disk ;
+
 // estrutura de inicialização to timer
 struct itimerval timer;
 
-// possiveis estados de cada tarefa
-enum estados {
-    TERMINADA = 0,
-    PRONTA,  
-    SUSPENSA 
-} status;
-
-#define STACKSIZE 64*1024   // Tamanho da stack de cada tarefa
-int ContadorDeTarefas;      // Marcador para definir os id's das tarefas
-task_t *tarefaAtual;        // Tarefa que esta no processador no momento
-task_t ContextMain;         // Tarefa da main
-task_t ContextDispatcher;   // Tarefa do dispatcher
-task_t *TarefasProntas;     // Vertor de tarefas prontas
-task_t *Dormitorio;         // Vetor de tarefas suspensas
-int userTasks;              // Numero de tarefas de usuario
-short quantum ;             // Tempo de vida da tarefa
-unsigned int time ;         // Tempo do sistema
-
 int lock_u = 0 ;
 int lock_d = 0 ;
+
+// tratador do sinal do disco
+void tratador_disk (int signum){
+    Disk.sinal = 1;
+    if(Disk.ContextDrive.status == SUSPENSA){
+        task_resume(&Disk.ContextDrive, &Disk.Quarto);
+    }
+}
+
+void diskDriverBody (void * args)
+{
+    while (1) 
+    {
+        // obtém o semáforo de acesso ao disco
+        sem_down(&Disk.sem_disk);
+    
+        // se foi acordado devido a um sinal do disco
+        if (Disk.sinal == 1)
+        {
+            Disk.sinal = 0;
+            // acorda a tarefa cujo pedido foi atendido
+            task_t *aux = Disk.Dormitorio_Disk;
+            
+            task_resume(aux, &Disk.Dormitorio_Disk);
+        }
+        
+        // se o disco estiver livre e houver pedidos de E/S na fila
+        if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (Disk.fila_disco != NULL))
+        {
+            // escolhe na fila o pedido a ser atendido, usando FCFS
+            pedido *aux = Disk.fila_disco;
+            // solicita ao disco a operação de E/S, usando disk_cmd()
+            int result = disk_cmd(aux->type, aux->block, aux->buffer);
+            if(result < 0){
+                exit(-1);
+            } 
+            if(queue_remove((queue_t **)&Disk.fila_disco, (queue_t *)aux) < 0){
+                perror("ERRO AO REMOVER ELEMENTO DA FILA DE SUSPENSÃO DO DISCO");
+                exit(-1);
+            }
+        }
+    
+        // libera o semáforo de acesso ao disco
+        sem_up(&Disk.sem_disk);
+    
+        // suspende a tarefa corrente (retorna ao dispatcher)
+        task_suspend(&Disk.Quarto);
+    }
+}
  
 void enter_cs (int *lock)
 {
@@ -109,7 +145,10 @@ void dispatcher(){
                 case TERMINADA:
                     userTasks--;
                     free((*proxima).context.uc_stack.ss_sp);
-                    queue_remove((queue_t **)&TarefasProntas, (queue_t *)proxima);
+                    if(queue_remove((queue_t **)&TarefasProntas, (queue_t *)proxima) < 0){
+                        perror("ERRO AO REMOVER ELEMENTO NO DISPATCHER");
+                        exit(-1);
+                    }
                     break; 
                 case SUSPENSA:
 
@@ -151,9 +190,26 @@ void ppos_init (){
     tarefaAtual = &ContextMain;
 
     task_create(&ContextDispatcher, dispatcher, NULL);
-    queue_remove((queue_t **)&TarefasProntas, (queue_t *)&ContextDispatcher);
+    if(queue_remove((queue_t **)&TarefasProntas, (queue_t *)&ContextDispatcher) < 0){
+        perror("ERRO AO REMOVER O DISPATCHER DAS TAREFAS PRONTAS");
+        exit(-1);
+    }
     userTasks--;
     ContextDispatcher.TaskUser = 0;
+
+    task_create(&Disk.ContextDrive, diskDriverBody, NULL);
+    if(queue_remove((queue_t **)&TarefasProntas, (queue_t *)&Disk.ContextDrive) < 0){
+        perror("ERRO AO REMOVER O DRIVER DAS TAREFAS PRONTAS");
+        exit(-1);
+    }
+    userTasks--;
+    Disk.ContextDrive.TaskUser = 0;
+
+    Disk.ContextDrive.status = SUSPENSA;
+    if(queue_append((queue_t **)&Disk.Quarto, (queue_t *)&Disk.ContextDrive) < 0){
+        perror("ERRO AO ADICIONAR DRIVE AO QUARTO");
+        exit(-1);
+    }
 
     // registra a ação para o sinal de timer SIGALRM
     action.sa_handler = tratador ;
@@ -164,6 +220,19 @@ void ppos_init (){
         perror ("Erro em sigaction: ") ;
         exit (1) ;
     }
+
+    // registra a ação para o sinal de timer SIGUSR1
+    action_disk.sa_handler = tratador_disk ;
+    sigemptyset (&action_disk.sa_mask) ;
+    action_disk.sa_flags = 0 ;
+    if (sigaction (SIGUSR1, &action_disk, 0) < 0)
+    {
+        perror ("Erro em sigaction: ") ;
+        exit (1) ;
+    }
+
+    Disk.sem_disk.counter = 1;
+    Disk.sinal = 0;
 
     // ajusta valores do temporizador
     timer.it_value.tv_usec = 1000 ;      // primeiro disparo, em micro-segundos
@@ -213,7 +282,10 @@ int task_create (task_t *task,		    // descritor da nova tarefa
 
     task->status = PRONTA;
 
-    queue_append((queue_t **)&TarefasProntas, (queue_t *)task);
+    if(queue_append((queue_t **)&TarefasProntas, (queue_t *)task) < 0){
+        perror("ERRO AO ADICIONAR UMA NOVA TAREFA A FILA DE TAREFAS PRONTAS");
+        exit(-1);
+    }
     userTasks++;
 
     task->TaskUser = 1;
@@ -264,17 +336,29 @@ int task_id (){
 
 // suspende a tarefa atual na fila "queue"
 void task_suspend (task_t **queue){
-    queue_remove((queue_t **)&TarefasProntas, (queue_t *)tarefaAtual);
+    if(queue_remove((queue_t **)&TarefasProntas, (queue_t *)tarefaAtual) < 0){
+        perror("ERRO AO REMOVER ELEMENTO DAS TAREFES PRONTAS");
+        exit(-1);
+    }
     tarefaAtual->status = SUSPENSA;
-    queue_append((queue_t **)queue, (queue_t *)tarefaAtual);
+    if(queue_append((queue_t **)queue, (queue_t *)tarefaAtual) < 0){
+        perror("ERRO AO ADICIONAR UMA TEREFA A UMA FILA DE SUSPENSÃO");
+        exit(-1);
+    }
     task_yield();
 }
 
 // acorda a tarefa indicada, que está suspensa na fila indicada
 void task_resume (task_t *task, task_t **queue){
-    queue_remove((queue_t **)queue, (queue_t *)task);
+    if(queue_remove((queue_t **)queue, (queue_t *)task) < 0){
+        perror("ERRO AO REMOVER ELEMENTO DE UMA FILA DE SUSPENSÃO");
+        exit(-1);
+    }
     task->status = PRONTA;
-    queue_append((queue_t **)&TarefasProntas, (queue_t *)task);
+    if(queue_append((queue_t **)&TarefasProntas, (queue_t *)task) < 0){
+        perror("ERRO AO ADICIONAR UMA TAREFA A FILA DE TAREFAS PRONTAS");
+        exit(-1);
+    }
 }
 
 // libera o processador para a próxima tarefa, retornando à fila de tarefas
