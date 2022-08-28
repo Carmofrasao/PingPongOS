@@ -70,7 +70,7 @@ int disk_block_write (int block, void *buffer){
 
     tarefaAtual->block = block;
     tarefaAtual->buffer = buffer;
-    tarefaAtual->type = DISK_CMD_READ;
+    tarefaAtual->type = DISK_CMD_WRITE;
 
     /*
         O ERRO ESTA AQUI (linha 82)
