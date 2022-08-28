@@ -14,6 +14,9 @@
 // estrutura que define um tratador de sinal (deve ser global ou static)
 struct sigaction action ;
 
+// estrutura que define um tratador de sinal do disco(deve ser global ou static)
+struct sigaction action_disk ;
+
 // estrutura de inicialização to timer
 struct itimerval timer;
 
@@ -38,17 +41,24 @@ void diskDriverBody (void * args)
         {
             Disk.sinal = 0;
             // acorda a tarefa cujo pedido foi atendido
-            task_resume(Disk.fila_disco, &Disk.fila_disco);
+            task_t *aux = Disk.Dormitorio_Disk;
+                
+            task_resume(aux, &Disk.Dormitorio_Disk);
         }
         
         // se o disco estiver livre e houver pedidos de E/S na fila
         if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (Disk.fila_disco != NULL))
         {
             // escolhe na fila o pedido a ser atendido, usando FCFS
-            task_t *aux = Disk.fila_disco;
+            pedido *aux = Disk.fila_disco;
             // solicita ao disco a operação de E/S, usando disk_cmd()
-            if(disk_cmd(aux->type, aux->block, &aux->buffer) < 0)
+            int result = disk_cmd(aux->type, aux->block, aux->buffer);
+            if(result < 0){
                 exit(-1);
+            } 
+            if(queue_remove((queue_t **)&Disk.fila_disco, (queue_t *)aux) < 0){
+                exit(-1);
+            }
         }
     
         // libera o semáforo de acesso ao disco
@@ -197,10 +207,10 @@ void ppos_init (){
     }
 
     // registra a ação para o sinal de timer SIGUSR1
-    action.sa_handler = tratador_disk ;
-    sigemptyset (&action.sa_mask) ;
-    action.sa_flags = 0 ;
-    if (sigaction (SIGUSR1, &action, 0) < 0)
+    action_disk.sa_handler = tratador_disk ;
+    sigemptyset (&action_disk.sa_mask) ;
+    action_disk.sa_flags = 0 ;
+    if (sigaction (SIGUSR1, &action_disk, 0) < 0)
     {
         perror ("Erro em sigaction: ") ;
         exit (1) ;

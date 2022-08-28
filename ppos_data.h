@@ -27,9 +27,7 @@ typedef struct task_t
   struct task_t * tarefas_suspensas ; // Fila de tarefas suspensas
   int ec ;                            // Exit code
   int sleep_time;                     // Tempo do sleep
-  int type;                           // tipo de pedido
-  int block;                          // Bloco para leitura/escrita da tarefa (caso seja operação de disco)
-  void *buffer;                       // Endereço do buffer de dados
+  void *buffer;                   // Endereço do buffer de dados
   // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 

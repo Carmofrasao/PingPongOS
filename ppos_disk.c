@@ -6,6 +6,7 @@
 #include "disk.h"
 #include "queue.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 // inicializacao do gerente de disco
 // retorna -1 em erro ou 0 em sucesso
@@ -33,19 +34,18 @@ int disk_block_read (int block, void *buffer){
     // obtém o semáforo de acesso ao disco
     sem_down(&Disk.sem_disk);
 
-    tarefaAtual->block = block;
-    tarefaAtual->buffer = buffer;
-    tarefaAtual->type = DISK_CMD_READ;
+    pedido *aux = malloc(sizeof(pedido));
+    aux->prev = NULL; 
+    aux->next = NULL;
+    aux->id = tarefaAtual->id;
+    aux->block = block;
+    aux->buffer = buffer;
+    aux->type = DISK_CMD_READ;
 
-    /*
-        O ERRO ESTA AQUI (linha 47)
-        ESTOU TENTANDO COLOCAR tarefaAtual NA FILA Disk.fila_disco, 
-        MAS ELA JA TA NA FILA DE TAREFAS PRONTAS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-    */
- 
     // inclui o pedido na fila_disco
-    if(queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual) < 0)
+    if(queue_append((queue_t **)&Disk.fila_disco, (queue_t *)aux) < 0){
         return -1;
+    }
     
     if (ContextDrive.status == SUSPENSA)
     {
@@ -57,7 +57,11 @@ int disk_block_read (int block, void *buffer){
     sem_up(&Disk.sem_disk);
     
     // suspende a tarefa corrente (retorna ao dispatcher)
-    task_suspend(&Dormitorio);
+    /*
+        O ERRO ESTA AQUI (linha 64)
+        A TAREFA QUE CHAMA disk_block_read NÃO ESTA SUSPENDENDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    */
+    task_suspend(&Disk.Dormitorio_Disk);
     return 0;
 }
 
@@ -68,19 +72,18 @@ int disk_block_write (int block, void *buffer){
     // obtém o semáforo de acesso ao disco
     sem_down(&Disk.sem_disk);
 
-    tarefaAtual->block = block;
-    tarefaAtual->buffer = buffer;
-    tarefaAtual->type = DISK_CMD_WRITE;
-
-    /*
-        O ERRO ESTA AQUI (linha 82)
-        ESTOU TENTANDO COLOCAR tarefaAtual NA FILA Disk.fila_disco, 
-        MAS ELA JA TA NA FILA DE TAREFAS PRONTAS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-    */
+    pedido *aux = malloc(sizeof(pedido));
+    aux->prev = NULL; 
+    aux->next = NULL;
+    aux->id = tarefaAtual->id;
+    aux->block = block;
+    aux->buffer = buffer;
+    aux->type = DISK_CMD_WRITE;
  
     // inclui o pedido na fila_disco
-    if(queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual) < 0)
+    if(queue_append((queue_t **)&Disk.fila_disco, (queue_t *)aux) < 0){
         return -1;
+    }
  
     if (ContextDrive.status == SUSPENSA)
     {
@@ -92,7 +95,11 @@ int disk_block_write (int block, void *buffer){
     sem_up(&Disk.sem_disk);
     
     // suspende a tarefa corrente (retorna ao dispatcher)
-    task_suspend(&Dormitorio);
+    /*
+        O ERRO ESTA AQUI (linha 101)
+        A TAREFA QUE CHAMA disk_block_write NÃO ESTA SUSPENDENDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    */
+    task_suspend(&Disk.Dormitorio_Disk);
 
     return 0;
 }

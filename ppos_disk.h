@@ -13,11 +13,22 @@
 // a um dispositivo de entrada/saida orientado a blocos,
 // tipicamente um disco rigido.
 
+typedef struct pedido
+{
+  struct pedido *prev, *next ;    // Ponteiros para usar em filas
+  int id;                         // tarefa que fez o pedido
+  int type;                       // tipo de pedido
+  int block;                      // Bloco para leitura/escrita da tarefa (caso seja operação de disco)
+  void *buffer;                   // Endereço do buffer de dados
+} pedido;
+
+
 // estrutura que representa um disco no sistema operacional
 typedef struct
 {
   semaphore_t sem_disk;       // Semaforo do disco
-  task_t *fila_disco;         // Tarefas de disco
+  pedido *fila_disco;         // Tarefas de disco
+  task_t *Dormitorio_Disk;    // Tarefas suspensas pelo disco
   short sinal;                // sinal de ativação do disco
   // completar com os campos necessarios
 } disk_t ;
