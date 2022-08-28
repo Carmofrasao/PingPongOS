@@ -36,9 +36,16 @@ int disk_block_read (int block, void *buffer){
     tarefaAtual->block = block;
     tarefaAtual->buffer = buffer;
     tarefaAtual->type = DISK_CMD_READ;
+
+    /*
+        O ERRO ESTA AQUI (linha 47)
+        ESTOU TENTANDO COLOCAR tarefaAtual NA FILA Disk.fila_disco, 
+        MAS ELA JA TA NA FILA DE TAREFAS PRONTAS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    */
  
     // inclui o pedido na fila_disco
-    queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual);
+    if(queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual) < 0)
+        return -1;
     
     if (ContextDrive.status == SUSPENSA)
     {
@@ -64,9 +71,16 @@ int disk_block_write (int block, void *buffer){
     tarefaAtual->block = block;
     tarefaAtual->buffer = buffer;
     tarefaAtual->type = DISK_CMD_READ;
+
+    /*
+        O ERRO ESTA AQUI (linha 82)
+        ESTOU TENTANDO COLOCAR tarefaAtual NA FILA Disk.fila_disco, 
+        MAS ELA JA TA NA FILA DE TAREFAS PRONTAS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    */
  
     // inclui o pedido na fila_disco
-    queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual);
+    if(queue_append((queue_t **)&Disk.fila_disco, (queue_t *)tarefaAtual) < 0)
+        return -1;
  
     if (ContextDrive.status == SUSPENSA)
     {

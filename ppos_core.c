@@ -22,9 +22,8 @@ int lock_d = 0 ;
 
 // tratador do sinal do disco
 void tratador_disk (int signum){
-    sinal = 1;
+    Disk.sinal = 1;
     task_resume(&ContextDrive, &Dormitorio);
-    task_switch(&ContextDrive);
 }
 
 void diskDriverBody (void * args)
@@ -35,20 +34,16 @@ void diskDriverBody (void * args)
         sem_down(&Disk.sem_disk);
     
         // se foi acordado devido a um sinal do disco
-        if (sinal == 1)
+        if (Disk.sinal == 1)
         {
-            sinal = 0;
+            Disk.sinal = 0;
             // acorda a tarefa cujo pedido foi atendido
             task_resume(Disk.fila_disco, &Disk.fila_disco);
         }
         
         // se o disco estiver livre e houver pedidos de E/S na fila
-        if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (&Disk.fila_disco != NULL))
+        if (disk_cmd (DISK_CMD_STATUS, 0, 0) == 1 && (Disk.fila_disco != NULL))
         {
-            /*
-                O ERRO ESTA AQUI
-                NÃO SEI COMO ACESSAR Disk.fila_disco DIREITO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            */
             // escolhe na fila o pedido a ser atendido, usando FCFS
             task_t *aux = Disk.fila_disco;
             // solicita ao disco a operação de E/S, usando disk_cmd()
@@ -187,7 +182,6 @@ void ppos_init (){
     queue_remove((queue_t **)&TarefasProntas, (queue_t *)&ContextDrive);
     userTasks--;
     ContextDrive.TaskUser = 0;
-    sinal = 0;
 
     ContextDrive.status = SUSPENSA;
     queue_append((queue_t **)&Dormitorio, (queue_t *)&ContextDrive);
@@ -213,7 +207,7 @@ void ppos_init (){
     }
 
     Disk.sem_disk.counter = 1;
-    Disk.fila_disco = NULL;
+    Disk.sinal = 0;
 
     // ajusta valores do temporizador
     timer.it_value.tv_usec = 1000 ;      // primeiro disparo, em micro-segundos

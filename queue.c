@@ -6,7 +6,6 @@
 //------------------------------------------------------------------------------
 // Conta o numero de elementos na fila
 // Retorno: numero de elementos na fila
-
 int queue_size (queue_t *queue){
 
     if (queue == NULL){
@@ -33,7 +32,6 @@ int queue_size (queue_t *queue){
 // usa a biblioteca. Essa função deve ter o seguinte protótipo:
 //
 // void print_elem (void *ptr) ; // ptr aponta para o elemento a imprimir
-
 void queue_print (char *name, queue_t *queue, void print_elem (void*) ){
 
     printf("%s: [", name);
@@ -68,7 +66,6 @@ void queue_print (char *name, queue_t *queue, void print_elem (void*) ){
 // - o elemento deve existir
 // - o elemento nao deve estar em outra fila
 // Retorno: 0 se sucesso, <0 se ocorreu algum erro
-
 int queue_append (queue_t **queue, queue_t *elem){
 
     // testando condições de verificação
@@ -113,7 +110,6 @@ int queue_append (queue_t **queue, queue_t *elem){
 // - o elemento deve existir
 // - o elemento deve pertencer a fila indicada
 // Retorno: 0 se sucesso, <0 se ocorreu algum erro
-
 int queue_remove (queue_t **queue, queue_t *elem){
 
     // condições de verificação

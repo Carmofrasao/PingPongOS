@@ -85,6 +85,5 @@ task_t *Dormitorio;         // Tarefas suspensas
 int userTasks;              // Numero de tarefas de usuario
 short quantum ;             // Tempo de vida da tarefa
 unsigned int time ;         // Tempo do sistema
-short sinal;                // Sinal para acordar o disco 
 
 #endif

@@ -18,6 +18,7 @@ typedef struct
 {
   semaphore_t sem_disk;       // Semaforo do disco
   task_t *fila_disco;         // Tarefas de disco
+  short sinal;                // sinal de ativação do disco
   // completar com os campos necessarios
 } disk_t ;
 
