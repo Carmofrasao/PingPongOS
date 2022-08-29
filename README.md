@@ -1,6 +1,6 @@
 # PingPongOS
 
-Trabalho desenvolvido para a matéria de Sistemas Operacionais da Univercidade Federal do Paraná
+Trabalho desenvolvido para a matéria de Sistemas Operacionais, no curso de Ciencia da Computação, da Univercidade Federal do Paraná
 
 Feito por Anderson Frasão
 
